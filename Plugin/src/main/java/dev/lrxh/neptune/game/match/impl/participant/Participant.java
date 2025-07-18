@@ -39,6 +39,7 @@ public class Participant {
     private int points = 0;
     private boolean frozen = false;
     private boolean bedBroken;
+    private int killStreak = 0; // Tambahkan baris ini
 
     // ELO CHANGES
     private int eloChange = 0;

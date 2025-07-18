@@ -2,6 +2,7 @@ package dev.lrxh.neptune.game.match.listener;
 
 import dev.lrxh.neptune.API;
 import dev.lrxh.neptune.configs.impl.MessagesLocale;
+import dev.lrxh.neptune.configs.impl.SettingsLocale; // Import the new setting
 import dev.lrxh.neptune.events.MatchParticipantDeathEvent;
 import dev.lrxh.neptune.game.arena.Arena;
 import dev.lrxh.neptune.game.arena.impl.StandAloneArena;
@@ -32,7 +33,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.entity.WindCharge;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
+import org.bukkit.event.Listener; // Make sure this import is present
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
@@ -49,7 +50,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class MatchListener implements Listener {
+public class MatchListener implements Listener { // Ensure implements Listener is here
+
+    // Helper method to check if protection is disabled in the player's world
+    private boolean isProtectionDisabled(Player player) {
+        return SettingsLocale.DISABLED_PROTECTION_WORLDS.getStringList().contains(player.getWorld().getName());
+    }
 
     @EventHandler
     public void onBlockPlaceEvent(BlockPlaceEvent event) {
@@ -57,6 +63,12 @@ public class MatchListener implements Listener {
         if (player.getGameMode().equals(GameMode.CREATIVE)) return;
         Profile profile = API.getProfile(player);
         if (profile == null) return;
+
+        // Allow block placement if protection is disabled in this world and player is not in a match/kit editor
+        if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME, ProfileState.IN_KIT_EDITOR)) {
+            return;
+        }
+
         Match match = profile.getMatch();
         Location blockLocation = event.getBlock().getLocation();
 
@@ -107,6 +119,7 @@ public class MatchListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onEntityPush(EntityPushedByEntityAttackEvent event) {
+        // This event is usually for specific combat mechanics, likely not affected by world protection.
         if (!(event.getPushedBy() instanceof WindCharge wc)) return;
         Entity pushed = event.getEntity();
 
@@ -137,6 +150,7 @@ public class MatchListener implements Listener {
 
     @EventHandler
     public void onPlayerDeathEvent(PlayerDeathEvent event) {
+        // This event should generally always be handled by the plugin, regardless of world.
         Player player = event.getEntity();
         event.deathMessage(null);
         event.getDrops().clear();
@@ -155,20 +169,52 @@ public class MatchListener implements Listener {
 
     @EventHandler
     public void onPlayerDamage(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player attacker && event.getEntity() instanceof Player) {
-            Profile profile = API.getProfile(attacker);
-            if (profile == null) return;
-            Match match = profile.getMatch();
-            if (match == null) return;
+        // Fix: Explicitly cast event.getEntity() to Player to resolve 'player cannot be resolved'
+        if (!(event.getDamager() instanceof Player attacker)) return;
+        if (!(event.getEntity() instanceof Player player)) return; // Explicitly declare 'player' here
 
-            if (match.getKit().is(KitRule.PARKOUR)) {
+        Profile attackerProfile = API.getProfile(attacker);
+        if (attackerProfile == null) return;
+
+        // If protection is disabled in attacker's world and they are not in a game, allow interaction.
+        if (isProtectionDisabled(attacker) && !attackerProfile.hasState(ProfileState.IN_GAME)) {
+            return;
+        }
+
+        Profile profile = API.getProfile(player);
+        if (profile == null) return;
+
+        if (profile.getMatch() == null || attackerProfile.getState().equals(ProfileState.IN_SPECTATOR)) {
+            event.setCancelled(true);
+            return;
+        }
+        Match match = profile.getMatch();
+
+        if (!attackerProfile.getMatch().getUuid().equals(match.getUuid())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (match.getParticipant(attacker).isDead()) {
+            event.setCancelled(true);
+        }
+
+        if (match instanceof TeamFightMatch teamFightMatch) {
+            if (teamFightMatch.onSameTeam(player.getUniqueId(), attacker.getUniqueId())) {
                 event.setCancelled(true);
             }
         }
+
+        if (!match.getState().equals(MatchState.IN_ROUND)) {
+            event.setCancelled(true);
+        }
+
+        match.getParticipant(player.getUniqueId()).setLastAttacker(match.getParticipant(attacker.getUniqueId()));
     }
 
     @EventHandler
     public void onPressurePlate(PlayerInteractEvent event) {
+        // This is a game-specific mechanic (parkour), should not be affected by world protection.
         Player player = event.getPlayer();
         if (event.getAction() == Action.PHYSICAL) {
             Material blockType = event.getClickedBlock() != null ? event.getClickedBlock().getType() : null;
@@ -203,6 +249,11 @@ public class MatchListener implements Listener {
             if (player.getGameMode().equals(GameMode.CREATIVE)) return;
             Profile profile = API.getProfile(player);
 
+            // Allow item pickup if protection is disabled in this world and player is not in a game
+            if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME)) {
+                return;
+            }
+
             if (!profile.getState().equals(ProfileState.IN_GAME)) {
                 event.setCancelled(true);
             }
@@ -215,6 +266,12 @@ public class MatchListener implements Listener {
         if (player.getGameMode().equals(GameMode.CREATIVE)) return;
         Profile profile = API.getProfile(player);
         if (profile == null) return;
+
+        // Allow bucket empty if protection is disabled in this world and player is not in a match/kit editor
+        if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME, ProfileState.IN_KIT_EDITOR)) {
+            return;
+        }
+
         Match match = profile.getMatch();
         Location blockLocation = event.getBlock().getLocation();
         if (profile.hasState(ProfileState.IN_KIT_EDITOR)) {
@@ -256,6 +313,13 @@ public class MatchListener implements Listener {
         if (!(shooter instanceof Player player)) return;
 
         Profile profile = API.getProfile(player);
+        if (profile == null) return;
+
+        // Allow projectile launch if protection is disabled in this world and player is not in a game
+        if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME)) {
+            return;
+        }
+
         Match match = profile.getMatch();
         if (match == null) {
             event.setCancelled(true);
@@ -266,40 +330,51 @@ public class MatchListener implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     public void onEntityDamageByEntityMonitor(EntityDamageByEntityEvent event) {
-        if (event.getDamager() instanceof Player attacker && event.getEntity() instanceof Player player) {
-            Profile attackerProfile = API.getProfile(attacker.getUniqueId());
-            Profile profile = API.getProfile(player);
-            if (profile == null) return;
+        // This is a complex event involving combat; careful consideration is needed.
+        // If players are in a match, existing combat rules apply.
+        // If not in a match, and world protection is disabled, standard Minecraft damage should apply.
+        if (!(event.getDamager() instanceof Player attacker)) return;
+        if (!(event.getEntity() instanceof Player player)) return; // Explicitly declare 'player' here
 
-            if (profile.getMatch() == null || attackerProfile.getState().equals(ProfileState.IN_SPECTATOR)) {
-                event.setCancelled(true);
-                return;
-            }
-            Match match = profile.getMatch();
+        Profile attackerProfile = API.getProfile(attacker.getUniqueId());
+        if (attackerProfile == null) return;
 
-            if (!attackerProfile.getMatch().getUuid().equals(match.getUuid())) {
-                event.setCancelled(true);
-                return;
-            }
-
-            if (match.getParticipant(attacker).isDead()) {
-                event.setCancelled(true);
-            }
-
-            if (match instanceof TeamFightMatch teamFightMatch) {
-                if (teamFightMatch.onSameTeam(player.getUniqueId(), attacker.getUniqueId())) {
-                    event.setCancelled(true);
-                }
-            }
-
-            if (!match.getState().equals(MatchState.IN_ROUND)) {
-                event.setCancelled(true);
-            }
-
-            match.getParticipant(player.getUniqueId()).setLastAttacker(match.getParticipant(attacker.getUniqueId()));
+        // If attacker is not in a match and protection is disabled in their world, allow damage
+        if (isProtectionDisabled(attacker) && attackerProfile.getMatch() == null) {
+            return;
         }
+
+        Profile profile = API.getProfile(player);
+        if (profile == null) return;
+
+        if (profile.getMatch() == null || attackerProfile.getState().equals(ProfileState.IN_SPECTATOR)) {
+            event.setCancelled(true);
+            return;
+        }
+        Match match = profile.getMatch();
+
+        if (!attackerProfile.getMatch().getUuid().equals(match.getUuid())) {
+            event.setCancelled(true);
+            return;
+        }
+
+        if (match.getParticipant(attacker).isDead()) {
+            event.setCancelled(true);
+        }
+
+        if (match instanceof TeamFightMatch teamFightMatch) {
+            if (teamFightMatch.onSameTeam(player.getUniqueId(), attacker.getUniqueId())) {
+                event.setCancelled(true);
+            }
+        }
+
+        if (!match.getState().equals(MatchState.IN_ROUND)) {
+            event.setCancelled(true);
+        }
+
+        match.getParticipant(player.getUniqueId()).setLastAttacker(match.getParticipant(attacker.getUniqueId()));
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -307,6 +382,12 @@ public class MatchListener implements Listener {
         if (event.getEntity() instanceof Player target && event.getDamager() instanceof Player damager) {
             Profile targetProfile = API.getProfile(target);
             Profile playerProfile = API.getProfile(damager.getUniqueId());
+
+            // If not in a game and protection is disabled in world, allow hit event to pass through
+            if (isProtectionDisabled(target) && targetProfile.getMatch() == null) {
+                return;
+            }
+
             if (targetProfile.getState() == ProfileState.IN_GAME && playerProfile.getState().equals(ProfileState.IN_GAME) && damager.getAttackCooldown() >= 0.2) {
                 Match match = targetProfile.getMatch();
                 Participant opponent = match.getParticipant(target.getUniqueId());
@@ -322,6 +403,11 @@ public class MatchListener implements Listener {
     public void onDamage(EntityDamageEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
 
+        // If protection is disabled in the player's world AND they are not in a match, allow damage.
+        if (isProtectionDisabled(player) && API.getProfile(player).getMatch() == null) {
+            return;
+        }
+
         if (!(event.getFinalDamage() >= player.getHealth())) return;
         if (player.getInventory().getItemInMainHand().getType().equals(Material.TOTEM_OF_UNDYING) ||
                 player.getInventory().getItemInOffHand().getType().equals(Material.TOTEM_OF_UNDYING)) return;
@@ -329,7 +415,10 @@ public class MatchListener implements Listener {
         Profile profile = API.getProfile(player);
         if (profile == null) return;
         Match match = profile.getMatch();
-        if (match == null) return;
+        if (match == null) {
+            event.setCancelled(true); // Still cancel if no match and not in disabled world
+            return;
+        }
         Participant participant = match.getParticipant(player.getUniqueId());
         participant.setDeathCause(DeathCause.DIED);
         match.onDeath(participant);
@@ -343,8 +432,16 @@ public class MatchListener implements Listener {
         Player player = event.getPlayer();
         Profile profile = API.getProfile(player);
         if (profile == null) return;
+
+        // If protection is disabled in player's world and they are not in a match, allow move event to pass through.
+        // However, gravity/death Y logic should still apply in game worlds even if listed as "disabled protection" if a match is active.
+        if (isProtectionDisabled(player) && profile.getMatch() == null) {
+            return;
+        }
+
         Match match = profile.getMatch();
-        if (match == null) return;
+        if (match == null) return; // if match is null, further match-specific logic is skipped.
+
         Arena arena = match.getArena();
 
         Participant participant = match.getParticipant(player.getUniqueId());
@@ -372,21 +469,16 @@ public class MatchListener implements Listener {
             return;
         }
         if (match.getState().equals(MatchState.IN_ROUND)) {
-            Location playerLocation = player.getLocation();
+            Block block = player.getLocation().getBlock();
 
             if (match.getKit().is(KitRule.DROPPER)) {
-                Block block = playerLocation.getBlock();
-
                 if (block.getType() == Material.WATER) {
                     match.win(participant);
                 }
-
                 return;
             }
 
             if (match.getKit().is(KitRule.SUMO)) {
-                Block block = playerLocation.getBlock();
-
                 if (block.getType() == Material.WATER) {
                     participant.setDeathCause(participant.getLastAttacker() != null ? DeathCause.KILL : DeathCause.DIED);
                     match.onDeath(participant);
@@ -397,6 +489,9 @@ public class MatchListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
+        // This seems to be a separate move event handler, keeping its original logic.
+        // It does not include direct cancellations based on player interaction in general.
+        if (!event.hasChangedPosition()) return;
         Player player = event.getPlayer();
         Location from = event.getFrom();
         Location to = event.getTo();
@@ -412,6 +507,8 @@ public class MatchListener implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
+        // This is for specific block interactions, not general player interactions.
+        // Likely intended to prevent certain material interactions.
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
 
         Block clickedBlock = event.getClickedBlock();
@@ -444,9 +541,14 @@ public class MatchListener implements Listener {
             Profile profile = API.getProfile(player);
             if (profile == null) return;
 
+            // If protection is disabled in the player's world AND they are not in a match, allow damage.
+            if (isProtectionDisabled(player) && profile.getMatch() == null) {
+                return;
+            }
+
             Match match = profile.getMatch();
             if (match == null) {
-                event.setCancelled(true);
+                event.setCancelled(true); // Still cancel if no match and not in disabled world
                 return;
             }
 
@@ -490,8 +592,13 @@ public class MatchListener implements Listener {
         if (event.getEntity() instanceof Player player) {
             Profile profile = API.getProfile(player);
             if (profile == null) return;
-            Match match = profile.getMatch();
 
+            // Allow food level change if protection is disabled in this world and player is not in a game
+            if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME)) {
+                return;
+            }
+
+            Match match = profile.getMatch();
             if (!profile.getState().equals(ProfileState.IN_GAME)) {
                 event.setCancelled(true);
                 return;
@@ -510,6 +617,11 @@ public class MatchListener implements Listener {
             Profile profile = API.getProfile(player);
             if (profile == null) return;
 
+            // Allow health regain if protection is disabled in this world and player is not in a match
+            if (isProtectionDisabled(player) && profile.getMatch() == null) {
+                return;
+            }
+
             Match match = profile.getMatch();
             if (event.getRegainReason() == EntityRegainHealthEvent.RegainReason.SATIATED) {
                 if (match != null && !match.getKit().is(KitRule.SATURATION_HEAL)) {
@@ -525,13 +637,19 @@ public class MatchListener implements Listener {
         if (player.getGameMode() == GameMode.CREATIVE) return;
         Profile profile = API.getProfile(player);
         if (profile == null) return;
+
+        // Allow block break if protection is disabled in this world and player is not in a game/spectator
+        if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME, ProfileState.IN_SPECTATOR)) {
+            return;
+        }
+
         if (profile.getState() == ProfileState.IN_LOBBY || profile.getState() == ProfileState.IN_SPECTATOR) {
             event.setCancelled(true);
             return;
         }
 
         Match match = profile.getMatch();
-        if (match == null) return;
+        if (match == null) return; // if match is null, further match-specific logic is skipped.
 
         Material blockType = event.getBlock().getType();
         Location blockLocation = event.getBlock().getLocation();
@@ -557,6 +675,7 @@ public class MatchListener implements Listener {
 
     @EventHandler()
     public void onBedBreak(BlockBreakEvent event) {
+        // This is a game-specific mechanic (Bedwars), should not be affected by world protection.
         Player player = event.getPlayer();
         Profile profile = ProfileService.get().getByUUID(player.getUniqueId());
         Match match = profile.getMatch();
@@ -604,6 +723,12 @@ public class MatchListener implements Listener {
             if (player.getGameMode().equals(GameMode.CREATIVE)) return;
             Profile profile = API.getProfile(player);
             if (profile == null) return;
+
+            // Allow projectile hit if protection is disabled in this world and player is not in a game
+            if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME)) {
+                return;
+            }
+
             if (!profile.getState().equals(ProfileState.IN_GAME)) {
                 event.setCancelled(true);
             } else {
@@ -618,6 +743,7 @@ public class MatchListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onExplode(BlockExplodeEvent event) {
+        // This is a match-specific event for arena break rules, should not be affected by world protection.
         Player player = getNearbyPlayer(event.getBlock().getLocation());
 
         if (player == null) {
@@ -644,6 +770,12 @@ public class MatchListener implements Listener {
         if (player.getGameMode().equals(GameMode.CREATIVE)) return;
         Profile profile = API.getProfile(player);
         if (profile == null) return;
+
+        // Allow item drop if protection is disabled in this world and player is not in a game
+        if (isProtectionDisabled(player) && !profile.hasState(ProfileState.IN_GAME)) {
+            return;
+        }
+
         if (!profile.getState().equals(ProfileState.IN_GAME)) {
             event.setCancelled(true);
         } else {

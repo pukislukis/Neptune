@@ -1,6 +1,6 @@
 package dev.lrxh.neptune.providers.placeholder;
 
-import dev.lrxh.neptune.providers.placeholder.impl.*;
+import dev.lrxh.neptune.providers.placeholder.impl.*; // Pastikan ini mengimpor semua placeholder
 import org.bukkit.OfflinePlayer;
 
 import java.util.ArrayList;
@@ -68,7 +68,8 @@ public class PlaceholderManager {
                 new RedAlivePlaceholder(),
                 new BlueAlivePlaceholder(),
                 new RedMaxPlaceholder(),
-                new BlueMaxPlaceholder()
+                new BlueMaxPlaceholder(),
+                new KillStreakPlaceholder() // Tambahkan baris ini
         ));
     }
 

@@ -1,6 +1,7 @@
 package dev.lrxh.neptune.feature.hotbar.listener;
 
 import dev.lrxh.neptune.API;
+import dev.lrxh.neptune.configs.impl.SettingsLocale; // Import the new setting
 import dev.lrxh.neptune.feature.hotbar.impl.CustomItem;
 import dev.lrxh.neptune.feature.hotbar.impl.Item;
 import dev.lrxh.neptune.game.match.impl.MatchState;
@@ -21,6 +22,12 @@ public class ItemListener implements Listener {
     public void onPlayerInteract(PlayerInteractEvent event) {
         Player player = event.getPlayer();
         Profile profile = API.getProfile(player);
+
+        // Check if the player's world is in the disabled protection list
+        if (SettingsLocale.DISABLED_PROTECTION_WORLDS.getStringList().contains(player.getWorld().getName())) {
+            return; // Do not cancel interaction in this world
+        }
+
         if (profile.getMatch() != null && profile.getMatch().getState().equals(MatchState.IN_ROUND)) return;
         if (profile.getState().equals(ProfileState.IN_KIT_EDITOR)) return;
         if (player.getGameMode().equals(GameMode.CREATIVE)) return;

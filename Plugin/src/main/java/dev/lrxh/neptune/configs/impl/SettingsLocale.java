@@ -23,7 +23,9 @@ public enum SettingsLocale implements IDataAccessor {
     PARTICIPANT_COLOR_BLUE("PARTICIPANT.COLOR.BLUE", "", DataType.STRING, "&9"),
     PARTICIPANT_COLOR_RED("PARTICIPANT.COLOR.RED", "", DataType.STRING, "&c"),
     REQUEST_EXPIRY_TIME("REQUEST.EXPIRY_TIME", "How long a request should last in seconds.", DataType.INT, "30"),
-    PARTY_ADVERTISE_TIME("PARTY.ADVERTISE_TIME", "The time it should take for sending each message for party advertisements, in ticks (20 ticks = 1 second).", DataType.INT, "6000");
+    PARTY_ADVERTISE_TIME("PARTY.ADVERTISE_TIME", "The time it should take for sending each message for party advertisements, in ticks (20 ticks = 1 second).", DataType.INT, "6000"),
+    // New configuration to disable protection in specific worlds
+    DISABLED_PROTECTION_WORLDS("DISABLED_PROTECTION.WORLDS", "List of worlds where protection is disabled.", DataType.STRING_LIST, new String[]{});
 
     private final String path;
     private final String comment;

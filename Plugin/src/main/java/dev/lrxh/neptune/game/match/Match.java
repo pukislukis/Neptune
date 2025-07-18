@@ -95,6 +95,9 @@ public abstract class Match {
 
     public void sendMessage(MessagesLocale message, Replacement... replacements) {
         forEachParticipant(participant -> message.send(participant.getPlayerUUID(), replacements));
+
+        // Juga kirim ke penonton
+        forEachSpectator(player -> message.send(player.getUniqueId(), replacements));
     }
 
     public void addSpectator(Player player, Player target, boolean sendMessage, boolean add) {
@@ -248,6 +251,7 @@ public abstract class Match {
         PlayerUtil.reset(player);
         Participant participant = getParticipant(playerUUID);
         participant.setLastAttacker(null);
+        participant.setKillStreak(0); // Tambahkan baris ini: Reset kill streak saat menyiapkan pemain
         kit.giveLoadout(participant);
         player.getAttribute(Attribute.MAX_HEALTH).setBaseValue(kit.getHealth());
         player.setHealth(kit.getHealth());
@@ -359,6 +363,20 @@ public abstract class Match {
     }
 
     public void sendDeathMessage(Participant deadParticipant) {
+        // Reset kill streak for the dead player
+        deadParticipant.setKillStreak(0);
+
+        Participant killer = deadParticipant.getLastAttacker();
+        if (killer != null) {
+            killer.setKillStreak(killer.getKillStreak() + 1); // Tambahkan baris ini: Tingkatkan kill streak pembunuh
+            // Anda bisa menambahkan pesan atau efek khusus di sini untuk kill streak
+            // Contoh:
+            // if (killer.getKillStreak() >= 5) {
+            //     broadcast(CC.color("&a" + killer.getNameUnColored() + " is on a &e" + killer.getKillStreak() + "&a kill streak!"));
+            // }
+        }
+
+
         String deathMessage = deadParticipant.getDeathMessage();
         DeathCause deathCause = deadParticipant.getDeathCause();
 
