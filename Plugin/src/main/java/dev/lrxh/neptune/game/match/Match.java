@@ -33,6 +33,7 @@ import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
@@ -117,7 +118,8 @@ public abstract class Match {
         player.teleportAsync(target.getLocation()).thenAccept(bool -> {
             player.setAllowFlight(true);
             player.setFlying(true);
-            player.setGameMode(GameMode.SPECTATOR);
+            player.setGameMode(GameMode.SURVIVAL);
+            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
         });
         MatchSpectatorAddEvent event = new MatchSpectatorAddEvent(this, player);
         Bukkit.getPluginManager().callEvent(event);
@@ -229,6 +231,7 @@ public abstract class Match {
         Profile profile = API.getProfile(playerUUID);
 
         if (profile.getMatch() == null) return;
+        player.removePotionEffect(PotionEffectType.INVISIBILITY);
         PlayerUtil.reset(player);
         profile.setMatch(null);
         spectators.remove(playerUUID);

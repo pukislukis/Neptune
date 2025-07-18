@@ -1,6 +1,6 @@
 package dev.lrxh.neptune.providers.placeholder;
 
-import dev.lrxh.neptune.providers.placeholder.impl.*; // Pastikan ini mengimpor semua placeholder
+import dev.lrxh.neptune.providers.placeholder.impl.*;
 import org.bukkit.OfflinePlayer;
 
 import java.util.ArrayList;
@@ -69,7 +69,7 @@ public class PlaceholderManager {
                 new BlueAlivePlaceholder(),
                 new RedMaxPlaceholder(),
                 new BlueMaxPlaceholder(),
-                new KillStreakPlaceholder() // Tambahkan baris ini
+                new KillStreakPlaceholder()
         ));
     }
 
@@ -81,9 +81,11 @@ public class PlaceholderManager {
 
     public String parse(OfflinePlayer player, String text) {
         for (Placeholder placeholder : placeholders) {
-            text = placeholder.parse(player, text);
+            String result = placeholder.parse(player, text);
+            if (result != null && !result.equals(text)) {
+                return result;
+            }
         }
-
-        return text;
+        return null;
     }
 }

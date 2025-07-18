@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 @AllArgsConstructor
 public class PlaceholderImpl extends PlaceholderExpansion {
@@ -19,7 +20,7 @@ public class PlaceholderImpl extends PlaceholderExpansion {
 
     @Override
     public @NotNull String getAuthor() {
-        return "";
+        return "lrxh";
     }
 
     @Override
@@ -33,11 +34,14 @@ public class PlaceholderImpl extends PlaceholderExpansion {
     }
 
     @Override
-    public String onRequest(OfflinePlayer player, @NotNull String identifier) {
-        if (player == null) return identifier;
-        if (!player.isOnline()) return "Offline Player";
+    public @Nullable String onRequest(OfflinePlayer player, @NotNull String identifier) {
+        if (player == null || !player.isOnline()) {
+            return null;
+        }
         Profile profile = API.getProfile(player);
-        if (profile == null) return identifier;
+        if (profile == null) {
+            return null;
+        }
 
         return PlaceholderManager.get().parse(player, identifier);
     }
