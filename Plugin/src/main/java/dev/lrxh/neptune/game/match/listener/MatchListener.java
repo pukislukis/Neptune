@@ -118,7 +118,7 @@ public class MatchListener implements Listener { // Ensure implements Listener i
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onEntityPush(EntityPushedByEntityAttackEvent event) {
         // This event is usually for specific combat mechanics, likely not affected by world protection.
         if (!(event.getPushedBy() instanceof WindCharge wc)) return;
