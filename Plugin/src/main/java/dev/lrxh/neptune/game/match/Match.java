@@ -16,6 +16,7 @@ import dev.lrxh.neptune.game.match.impl.participant.Participant;
 import dev.lrxh.neptune.game.match.impl.participant.ParticipantColor;
 import dev.lrxh.neptune.game.match.impl.solo.SoloFightMatch;
 import dev.lrxh.neptune.game.match.impl.team.TeamFightMatch;
+import dev.lrxh.neptune.profile.data.KitData;
 import dev.lrxh.neptune.profile.data.ProfileState;
 import dev.lrxh.neptune.profile.impl.Profile;
 import dev.lrxh.neptune.providers.clickable.Replacement;
@@ -115,11 +116,16 @@ public abstract class Match {
 
         if (sendMessage) broadcast(MessagesLocale.SPECTATE_START, new Replacement("<player>", player.getName()));
 
+        // Bagian yang telah diperbaiki
         player.teleportAsync(target.getLocation()).thenAccept(bool -> {
-            player.setAllowFlight(true);
-            player.setFlying(true);
-            player.setGameMode(GameMode.SURVIVAL);
-            player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
+            if (bool) { 
+                Bukkit.getScheduler().runTask(Neptune.get(), () -> {
+                    player.setGameMode(GameMode.SURVIVAL);
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
+                    player.setAllowFlight(true);
+                    player.setFlying(true);
+                });
+            }
         });
         MatchSpectatorAddEvent event = new MatchSpectatorAddEvent(this, player);
         Bukkit.getPluginManager().callEvent(event);
@@ -368,15 +374,14 @@ public abstract class Match {
     public void sendDeathMessage(Participant deadParticipant) {
         // Reset kill streak for the dead player
         deadParticipant.setKillStreak(0);
+        API.getProfile(deadParticipant.getPlayerUUID()).getGameData().get(getKit()).setKillStreak(0);
+
 
         Participant killer = deadParticipant.getLastAttacker();
         if (killer != null) {
-            killer.setKillStreak(killer.getKillStreak() + 1); // Tambahkan baris ini: Tingkatkan kill streak pembunuh
-            // Anda bisa menambahkan pesan atau efek khusus di sini untuk kill streak
-            // Contoh:
-            // if (killer.getKillStreak() >= 5) {
-            //     broadcast(CC.color("&a" + killer.getNameUnColored() + " is on a &e" + killer.getKillStreak() + "&a kill streak!"));
-            // }
+            killer.setKillStreak(killer.getKillStreak() + 1);
+            KitData killerKitData = API.getProfile(killer.getPlayerUUID()).getGameData().get(getKit());
+            killerKitData.setKillStreak(killerKitData.getKillStreak() + 1);
         }
 
 

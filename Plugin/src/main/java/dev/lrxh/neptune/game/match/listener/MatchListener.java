@@ -48,6 +48,7 @@ import org.bukkit.projectiles.ProjectileSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 public class MatchListener implements Listener { // Ensure implements Listener is here
@@ -563,8 +564,10 @@ public class MatchListener implements Listener { // Ensure implements Listener i
                 event.setCancelled(true);
                 return;
             }
+            
+            EntityDamageEvent.DamageCause cause = event.getCause();
 
-            if (event.getCause().equals(EntityDamageEvent.DamageCause.FALL)) {
+            if (cause.equals(EntityDamageEvent.DamageCause.FALL)) {
                 if (!kit.is(KitRule.FALL_DAMAGE)) {
                     event.setCancelled(true);
                     return;
@@ -581,9 +584,14 @@ public class MatchListener implements Listener { // Ensure implements Listener i
                 return;
             }
 
-            if (!event.getCause().equals(EntityDamageEvent.DamageCause.FALL)) {
-                event.setDamage(event.getDamage() * kit.getDamageMultiplier());
+            // Pengecualian ditambahkan di sini
+            if (cause.equals(EntityDamageEvent.DamageCause.FALL) ||
+                cause.equals(EntityDamageEvent.DamageCause.BLOCK_EXPLOSION) ||
+                cause.equals(EntityDamageEvent.DamageCause.ENTITY_EXPLOSION)) {
+                return;
             }
+            
+            event.setDamage(event.getDamage() * kit.getDamageMultiplier());
         }
     }
 

@@ -19,6 +19,7 @@ public class KitData {
     private int deaths = 0;
     private int bestStreak = 0;
     private int currentStreak = 0;
+    private int killStreak = 0; // Ditambahkan
     private List<ItemStack> kitLoadout = new ArrayList<>();
     private Division division;
     private int elo = 0;

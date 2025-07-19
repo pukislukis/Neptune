@@ -69,7 +69,8 @@ public class PlaceholderManager {
                 new BlueAlivePlaceholder(),
                 new RedMaxPlaceholder(),
                 new BlueMaxPlaceholder(),
-                new KillStreakPlaceholder()
+                new KillStreakPlaceholder(),
+                new KitKillStreakPlaceholder()
         ));
     }
 

@@ -62,8 +62,13 @@ public class GameData {
 
         if (won) {
             value = updateWin(kitData);
+            globalStats.setCurrentStreak(globalStats.getCurrentStreak() + 1);
+            if (globalStats.getCurrentStreak() > globalStats.getBestStreak()) {
+                globalStats.setBestStreak(globalStats.getCurrentStreak());
+            }
         } else {
             updateLosses(kitData);
+            globalStats.setCurrentStreak(0);
         }
 
         globalStats.update();
@@ -81,6 +86,7 @@ public class GameData {
         kitData.setDeaths(kitData.getDeaths() + 1);
         kitData.updateElo(false);
         updateWinStreak(kitData, false);
+        kitData.setKillStreak(0);
     }
 
     private void updateWinStreak(KitData kitData, boolean won) {
@@ -91,9 +97,7 @@ public class GameData {
                 kitData.setBestStreak(kitData.getCurrentStreak());
             }
         } else {
-            kitData.setCurrentStreak(kitData.getCurrentStreak() + 1);
             kitData.setCurrentStreak(0);
-            globalStats.setCurrentStreak(0);
         }
     }
 

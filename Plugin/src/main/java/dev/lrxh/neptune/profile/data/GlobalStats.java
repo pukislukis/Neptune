@@ -24,14 +24,12 @@ public class GlobalStats {
     public void update() {
         this.wins = 0;
         this.losses = 0;
-        this.currentStreak = 0;
         this.bestStreak = 0;
         this.elo = 0;
 
         for (KitData kitData : profile.getGameData().getKitData().values()) {
             this.wins += kitData.getKills();
             this.losses += kitData.getDeaths();
-            this.currentStreak += kitData.getCurrentStreak();
             this.bestStreak = Math.max(this.bestStreak, kitData.getBestStreak());
             this.elo += kitData.getElo();
         }

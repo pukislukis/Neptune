@@ -14,6 +14,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 public class MatchRespawnRunnable extends NeptuneRunnable {
@@ -40,7 +41,10 @@ public class MatchRespawnRunnable extends NeptuneRunnable {
         if (respawnTimer == 3) {
             PlayerUtil.doVelocityChange(participant.getPlayerUUID());
             PlayerUtil.reset(participant.getPlayer());
-            participant.getPlayer().setGameMode(GameMode.SPECTATOR);
+            participant.getPlayer().setGameMode(GameMode.SURVIVAL); // Diubah dari SPECTATOR
+            participant.getPlayer().addPotionEffect(new PotionEffect(PotionEffectType.INVISIBILITY, Integer.MAX_VALUE, 0, false, false)); // Ditambahkan
+            participant.getPlayer().setAllowFlight(true); // Ditambahkan
+            participant.getPlayer().setFlying(true); // Ditambahkan
         }
 
         if (participant.getPlayer() == null) return;
@@ -52,9 +56,9 @@ public class MatchRespawnRunnable extends NeptuneRunnable {
                 location = match.getArena().getBlueSpawn();
             }
 
-            participant.getPlayer().removePotionEffect(PotionEffectType.INVISIBILITY);
-            participant.getPlayer().setAllowFlight(false);
-            participant.getPlayer().setFlying(false);
+            participant.getPlayer().removePotionEffect(PotionEffectType.INVISIBILITY); // Ditambahkan
+            participant.getPlayer().setAllowFlight(false); // Ditambahkan
+            participant.getPlayer().setFlying(false); // Ditambahkan
 
             participant.teleport(location);
 
